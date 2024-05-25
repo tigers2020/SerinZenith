@@ -1,0 +1,33 @@
+<!-- templates/base.html -->
+{% load static tailwind_tags %}
+<!DOCTYPE html>
+<html lang="en" class="antialiased lg:bg-zinc-100 dark:bg-zinc-900 dark:lg:bg-zinc-950 dark"
+      style="color-scheme: dark;">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Serin Zenith - {% block title %}{% endblock %}</title>
+    <script src="{% static 'dist/bundle.js' %}" defer></script>
+    {% tailwind_preload_css %}
+    {% tailwind_css %}
+</head>
+<body class="h-full">
+<div class="relative isolate flex min-h-svh w-full bg-white max-lg:flex-col lg:bg-zinc-100 dark:bg-zinc-900 dark:lg:bg-zinc-950">
+    <div class="fixed inset-y-0 left-0 w-64 max-lg:hidden">
+        {% include 'main/partials/sidenav.html' %}
+        {% include 'main/partials/header.html' %}
+    </div>
+    <main class="flex flex-1 flex-col pb-2 lg:min-w-0 lg:pl-64 lg:pr-2 lg:pt-2">
+        <div class="grow p-6 lg:rounded-lg lg:bg-white lg:p-10 lg:shadow-sm lg:ring-1 lg:ring-zinc-950/5 dark:lg:bg-zinc-900 dark:lg:ring-white/10">
+            <div class="mx-auto max-w-6xl">
+                {% block content %}
+                {% endblock %}
+            </div>
+        </div>
+    </main>
+
+</div>
+{% include 'main/partials/footer.html' %}
+
+</body>
+</html>

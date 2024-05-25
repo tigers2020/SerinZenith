@@ -1,0 +1,35 @@
+<!-- templates/main/partials/sidenav.html -->
+<nav class="flex flex-col h-full bg-gray-800 text-white">
+    <div class="flex items-center justify-center h-16 bg-gray-900">
+        <span class="text-lg font-semibold">Serin Zenith</span>
+    </div>
+    <ul class="flex-1">
+        <li class="hover:bg-gray-700">
+            <a href="{% url 'home' %}" class="block py-2 px-4">Home</a>
+        </li>
+        <li class="hover:bg-gray-700">
+            <a href="{% url 'serin_live' %}" class="block py-2 px-4">Serin Live</a>
+        </li>
+        <li class="hover:bg-gray-700">
+            <a href="{% url 'settings' %}" class="block py-2 px-4">Settings</a>
+        </li>
+        <li class="hover:bg-gray-700">
+            <a href="{% url 'about' %}" class="block py-2 px-4">About Us</a>
+        </li>
+    </ul>
+    <div class="p-4 border-t border-gray-700">
+        {% if user.is_authenticated %}
+            <p class="mb-2">Logged in as {{ user.username }}</p>
+            <form method="POST" action="{% url 'logout' %}">
+                {% csrf_token %}
+                <button type="submit" class="block w-full py-2 px-4 bg-red-500 rounded hover:bg-red-600">
+                    Logout
+                </button>
+            </form>
+        {% else %}
+            <a href="{% url 'login' %}" class="block w-full py-2 px-4 bg-blue-500 rounded hover:bg-blue-600">
+                Login
+            </a>
+        {% endif %}
+    </div>
+</nav>
