@@ -1,14 +1,70 @@
-<!-- templates/serin_live.html -->
+<!-- templates/main/serin_live.html -->
 {% extends 'main/base.html' %}
 
 {% block title %}Serin Live{% endblock %}
 
 {% block content %}
-<h1>Serin Live</h1>
-
-<div class="container mx-auto p-6">
-    <h1 class="text-3xl font-bold mb-4">Serin Live</h1>
-    <p>Welcome to the Serin Live page. Only authenticated users can see this content.</p>
+<div class="flex flex-col h-[85vh]">
+    <h1 class="text-2xl font-bold">Chat with Serin</h1>
+    <p>Chat with Serin</p>
+    <div class="flex flex-row flex-1 overflow-hidden">
+        <!-- Chat Groups Column -->
+        <div class="w-1/4 p-4 bg-gray-100 dark:bg-gray-700 rounded-lg shadow-md ring-1 ring-gray-200 dark:ring-gray-700 overflow-y-auto">
+            <h2 class="text-xl font-semibold mb-4">Chat Groups</h2>
+            <ul id="chat-groups" class="space-y-2">
+                <!-- Chat groups will be dynamically added here -->
+                <li class="p-2 bg-white dark:bg-gray-800 rounded-md shadow-sm cursor-pointer mb-5">2024-05-03-07:30 AM</li>
+                <li class="p-2 bg-white dark:bg-gray-800 rounded-md shadow-sm cursor-pointer mb-5">Group 2</li>
+                <li class="p-2 bg-white dark:bg-gray-800 rounded-md shadow-sm cursor-pointer mb-5">Group 3</li>
+                <!-- More groups as needed -->
+            </ul>
+        </div>
+        <!-- Chat Messages Column -->
+        <div class="flex flex-col flex-1 overflow-hidden ml-4">
+            <div id="chat-container" class="flex-1 p-6 overflow-y-auto bg-white dark:bg-gray-800 rounded-lg shadow-md ring-1 ring-gray-200 dark:ring-gray-700">
+                <div id="chat-messages" class="space-y-4">
+                    <!-- Messages will be dynamically added here -->
+                </div>
+            </div>
+            <div class="p-4 bg-gray-100 dark:bg-gray-700 border-t border-gray-200 dark:border-gray-600">
+                <form id="chat-form" class="flex">
+                    <input id="chat-input" type="text" placeholder="Type your message..." class="flex-1 px-4 py-2 mr-2 rounded-md border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-800 text-gray-900 dark:text-gray-100 focus:outline-none focus:ring-2 focus:ring-indigo-500">
+                    <button type="submit" class="px-4 py-2 bg-indigo-500 text-white rounded-md hover:bg-indigo-400 focus:outline-none focus:ring-2 focus:ring-indigo-500">Send</button>
+                </form>
+            </div>
+        </div>
+    </div>
 </div>
+{% endblock %}
 
+{% block custom_js %}
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    const chatForm = document.getElementById('chat-form');
+    const chatInput = document.getElementById('chat-input');
+    const chatMessages = document.getElementById('chat-messages');
+    const chatContainer = document.getElementById('chat-container');
+
+    function scrollToBottom() {
+        chatContainer.scrollTop = chatContainer.scrollHeight;
+    }
+
+    chatForm.addEventListener('submit', function(event) {
+        event.preventDefault();
+        const message = chatInput.value.trim();
+
+        if (message !== '') {
+            // Add message to chat (you would also send this to your server here)
+            const messageElement = document.createElement('div');
+            messageElement.classList.add('p-2', 'bg-gray-100', 'dark:bg-gray-700', 'rounded-md');
+            messageElement.textContent = message;
+            chatMessages.appendChild(messageElement);
+            scrollToBottom(); // Scroll to bottom
+            chatInput.value = ''; // Clear input
+        }
+    });
+
+    scrollToBottom(); // Scroll to bottom on page load
+});
+</script>
 {% endblock %}
