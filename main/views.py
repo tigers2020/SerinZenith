@@ -16,12 +16,6 @@ class HomeView(TemplateView):
         return context
 
 
-class SerinLiveView(LoginRequiredMixin, TemplateView):
-    template_name = 'main/serin_live.html'
-    login_url = 'login'
-    redirect_field_name = 'redirect_to'
-
-
 class SettingsView(LoginRequiredMixin, TemplateView):
     template_name = 'main/settings.html'
     login_url = 'login'

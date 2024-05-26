@@ -42,8 +42,11 @@ INSTALLED_APPS = [
     'django.contrib.staticfiles',
     'tailwind',
     'theme',
+    'tinymce',
+    'rest_framework',
     'django_browser_reload',
     'main',  # Main Page Displayer
+    'chat',  # Manage Chat Group and Message
 ]
 
 MIDDLEWARE = [
@@ -137,3 +140,19 @@ INTERNAL_IPS = [
     'localhost',
 ]
 NPM_BIN_PATH = r"C:\Program Files\nodejs\npm.cmd"
+
+# EDITOR CONFIG
+
+TINYMCE_DEFAULT_CONFIG = {
+    "height": "360px",
+    "width": "800px",
+    "menubar": "file edit view insert format tools table help",
+    "plugins": "advlist autolink lists link image charmap print preview anchor searchreplace visualblocks code fullscreen insertdatetime media table paste code help wordcount",
+    "toolbar": "undo redo | formatselect | bold italic backcolor | \
+            alignleft aligncenter alignright alignjustify | \
+            bullist numlist outdent indent | removeformat | help",
+
+}
+
+
+OPENAI_API_URL = config('OPENAI_API_URL')

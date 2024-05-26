@@ -1,11 +1,11 @@
 from django.contrib.auth.views import LogoutView
-from django.urls import path
+from django.urls import path, include
 
 from main import views
 
 urlpatterns = [
     path('', views.HomeView.as_view(), name='home'),
-    path('serin-live/', views.SerinLiveView.as_view(), name='serin_live'),
+    path('chat/', include('chat.urls'), name='chat'),
     path('settings/', views.SettingsView.as_view(), name='settings'),
     path('about/', views.AboutView.as_view(), name='about'),
     path('login/', views.LoginView.as_view(), name='login'),
