@@ -1,0 +1,7 @@
+{% for message in chat_messages %}
+    {% if message.sender == 'user' %}
+        {% include 'chat/user_message.html' with message=message %}
+    {% else %}
+        {% include 'chat/serin_reply.html' with message=message %}
+    {% endif %}
+{% endfor %}

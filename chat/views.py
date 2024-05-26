@@ -36,6 +36,14 @@ class ChatView(LoginRequiredMixin, TemplateView):
         return context
 
 
+class LoadMessagesView(LoginRequiredMixin, View):
+    def get(self, request, group_id):
+        chat_group = ChatGroup.objects.get(id=group_id)
+        chat_messages = ChatMessage.objects.filter(group=chat_group).order_by('created_at')
+        messages_html = render_to_string('chat/messages.html', {'chat_messages': chat_messages})
+        return JsonResponse({'messages_html': messages_html})
+
+
 class SendMessageView(View):
     def post(self, request, *args, **kwargs):
         message_content = request.POST.get('message')
