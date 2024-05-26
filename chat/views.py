@@ -1,10 +1,10 @@
 import json
 
 import requests
+from django.conf import settings
 from django.contrib.auth.mixins import LoginRequiredMixin
 from django.http import JsonResponse
-from django.shortcuts import get_object_or_404
-from django.shortcuts import render
+from django.shortcuts import get_object_or_404, render
 from django.template.loader import render_to_string
 from django.utils import timezone
 from django.utils.html import escape
@@ -12,7 +12,7 @@ from django.views import View
 from django.views.generic import TemplateView
 
 from SerinZenith import settings
-from .models import ChatGroup, ChatMessage
+from .models import ChatMessage, ChatGroup
 
 
 # Create your views here.
@@ -53,7 +53,7 @@ class SendMessageView(View):
         chat_message = ChatMessage.objects.create(user=request.user, group=chat_group, sender='user',
                                                   message=message_content)
         message = {
-            'user': request.user,
+            'sender': request.sender,
             'message': message_content
         }
         message_html = render_to_string('chat/user_message.html', {'message': message}, request=request)
@@ -65,16 +65,66 @@ class SendMessageView(View):
 
 
 class GetAIResponseView(View):
+    """
+    View class that handles the logic for generating AI responses in a chat application.
+
+    :param View: Django View class to handle HTTP requests
+    """
+
+    def __init__(self):
+        super().__init__()
+        self.response = None
+
     def post(self, request, *args, **kwargs):
         user = request.user
         message_id = request.POST.get('message_id')
         if not message_id:
             message_id = ChatMessage.objects.last().id
 
-        messages = ChatMessage.objects.order_by('-created_at')[:20][::-1]
+        messages = self.get_recent_messages()
+        message_history = self.prepare_message_history(messages)
+        serin_reply = self.get_ai_response(message_history)
 
-        # Prepare the message history for the OpenAI API
-        message_history = [{"role": message.sender, "content": escape(message.message)} for message in messages]
+        chat_message = get_object_or_404(ChatMessage, id=message_id)
+        chat_group = chat_message.group
+        ChatMessage.objects.create(user=user, group=chat_group, sender='assistant', message=serin_reply)
+
+        # Create the message dictionary with the required structure
+        message = {
+            'sender': 'Serin',
+            'message': serin_reply
+        }
+
+        serin_reply_html = render(request, 'chat/serin_reply.html', {'message': message}).content.decode('utf-8')
+        return JsonResponse({
+            'serin_reply_html': serin_reply_html,
+            'message_id': message_id
+        })
+
+    @staticmethod
+    def get_recent_messages():
+        return ChatMessage.objects.order_by('-created_at')[:20][::-1]
+
+    @staticmethod
+    def prepare_message_history(messages):
+        return [{"role": message.sender, "content": escape(message.message)} for message in messages]
+
+    @staticmethod
+    def get_error_message_based_on_status_code(status_code, http_err):
+        error_messages = {
+            400: "It looks like there was a problem with the request. Please check the data and try again.",
+            401: "Authorization failed. Please check your API key and permissions.",
+            403: "Access forbidden. You don't have permission to access this resource.",
+            404: "The requested resource was not found. Please check the URL and try again.",
+            500: "There was an internal server error. Please try again later.",
+            502: "Bad gateway. The server is currently unreachable. Please try again later.",
+            503: "Service unavailable. The server is temporarily unable to handle the request. Please try again later.",
+            504: "Gateway timeout. The server is taking too long to respond. Please try again later."
+        }
+        return error_messages.get(status_code, f"An HTTP error occurred: {http_err}. Please try again later.")
+
+    def get_ai_response(self, message_history):
+
         api_url = settings.OPENAI_API_URL + "v1/chat/completions"
         headers = {
             'Accept': 'application/json',
@@ -87,24 +137,17 @@ class GetAIResponseView(View):
         }
 
         try:
-            response = requests.post(api_url, headers=headers, data=json.dumps(data), verify=False)
-            response_data = response.json()
-            serin_reply = response_data['choices'][0]['message']['content']
+            self.response = requests.post(api_url, headers=headers, data=json.dumps(data), timeout=10)
+            self.response.raise_for_status()  # Raise an HTTPError for bad responses (4xx and 5xx)
+            response_data = self.response.json()
+            return response_data['choices'][0]['message']['content']
+        except requests.exceptions.HTTPError as http_err:
+            return GetAIResponseView.get_error_message_based_on_status_code(self.response.status_code, http_err)
+        except requests.exceptions.ConnectionError:
+            return "There was a network connection error. Please check your internet connection and try again."
+        except requests.exceptions.Timeout:
+            return "The request timed out. Please try again later."
+        except requests.exceptions.RequestException as err:
+            return f"An unexpected error occurred: {err}. Please try again later."
         except Exception as e:
-            serin_reply = f"Error: {str(e)}"
-        chat_message = get_object_or_404(ChatMessage, id=message_id)
-        chat_group = ChatMessage.objects.get(id=message_id).group
-        ChatMessage.objects.create(user=user, group=chat_group, sender='assistant', message=serin_reply)
-
-        # Create the message dictionary with the required structure
-        message = {
-            'user': 'Serin',
-            'message': serin_reply
-        }
-
-        serin_reply_html = render(request, 'chat/serin_reply.html', {'message': message}).content.decode('utf-8')
-        print(serin_reply_html)
-        return JsonResponse({
-            'serin_reply_html': serin_reply_html,
-            'message_id': message_id
-        })
+            return f"An error occurred: {str(e)}. Please try again later."

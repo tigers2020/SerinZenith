@@ -47,6 +47,7 @@ INSTALLED_APPS = [
     'django_browser_reload',
     'main',  # Main Page Displayer
     'chat',  # Manage Chat Group and Message
+    'serin_zenith_settings',  # everything about AI settings
 ]
 
 MIDDLEWARE = [
