@@ -1,34 +1,56 @@
-<!-- templates/base.html -->
 {% load static tailwind_tags %}
+{% load static %}
+<!-- templates/main/base.html -->
 <!DOCTYPE html>
 <html lang="en" class="antialiased lg:bg-zinc-100 dark:bg-zinc-900 dark:lg:bg-zinc-950 dark"
       style="color-scheme: dark;">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Serin Zenith - {% block title %}{% endblock %}</title>
-    <script src="{% static 'dist/bundle.js' %}" defer></script>
-    {% tailwind_preload_css %}
+    <title>Project Serin Zenith - {% block title %}{% endblock %}</title>
     {% tailwind_css %}
+    <script src="{% static 'dist/bundle.js' %}"></script>
 </head>
 <body class="h-full flex flex-col min-h-screen">
-    <div class="relative isolate flex flex-1 w-full bg-white max-lg:flex-col lg:bg-zinc-100 dark:bg-zinc-900 dark:lg:bg-zinc-950 pb-16">
-        <div class="fixed inset-y-0 left-0 w-64 max-lg:hidden">
-            {% include 'main/partials/sidenav.html' %}
-            {% include 'main/partials/header.html' %}
+<div class="h-full flex flex-col min-h-screen-900">
+<!-- Off-canvas menu for mobile, show/hide based on off-canvas menu state. -->
+        <div class="relative z-50 lg:hidden" role="dialog" aria-modal="true">
+            <div class="fixed inset-0 bg-gray-900/80"></div>
+            <div class="fixed inset-0 flex">
+                <div class="relative mr-16 flex w-full max-w-xs flex-1">
+                    <div class="absolute left-full top-0 flex w-16 justify-center pt-5">
+                        <button type="button" class="-m-2.5 p-2.5">
+                            <span class="sr-only">Close sidebar</span>
+                            <svg class="h-6 w-6 text-white" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" aria-hidden="true">
+                                <path stroke-linecap="round" stroke-linejoin="round" d="M6 18L18 6M6 6l12 12" />
+                            </svg>
+                        </button>
+                    </div>
+                    <!-- Sidebar component for mobile -->
+                    {% include 'main/partials/sidenav.html' %}
+                </div>
+            </div>
         </div>
-        <main class="flex flex-1 flex-col pb-2 lg:min-w-0 lg:pl-72 lg:pr-8 lg:pt-2">
-            <div class="grow p-6 lg:rounded-lg lg:bg-white lg:p-10 lg:shadow-sm lg:ring-2 lg:ring-zinc-950/5 dark:lg:bg-zinc-900 dark:lg:ring-white/10">
+
+        <!-- Static sidebar for desktop -->
+        <div class="hidden lg:fixed lg:inset-y-0 lg:z-50 lg:flex lg:w-72 lg:flex-col">
+            {% include 'main/partials/sidenav.html' %}
+        </div>
+
+        <!-- Content area -->
+        <div class="lg:pl-72">
+            <!-- Header -->
+            {% include 'main/partials/header.html' %}
+
+            <!-- Main content -->
+            <main class="py-10">
+                <div class="px-4 sm:px-6 lg:px-8">
                     {% block content %}
                     {% endblock %}
-            </div>
-        {% include 'main/partials/footer.html' %}
-
-        </main>
-
+                </div>
+            </main>
+        </div>
     </div>
-
-{% block custom_js %}
-{% endblock %}
+{% include 'main/partials/footer.html' %}
 </body>
 </html>
