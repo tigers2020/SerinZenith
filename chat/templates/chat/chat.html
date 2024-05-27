@@ -31,159 +31,119 @@
                         {% endfor %}
                     </div>
                 </div>
-                <div class="p-4 bg-gray-100 dark:bg-gray-700 border-t border-gray-200 dark:border-gray-600 flex items-center">
-                    <form id="chat-form" class="flex items-center w-full space-x-2" action="{% url 'send_message' %}"
-                          method="post">
+                <div class="p-4 bg-gray-100 dark:bg-gray-700 border-t border-gray-200 dark:border-gray-600">
+                    <form id="chat-form" class="flex" action="{% url 'send_message' %}" method="post">
                         {% csrf_token %}
                         <div class="relative rounded-md px-3 pb-1.5 pt-2.5 shadow-sm ring-1 ring-inset ring-gray-300 focus-within:ring-2 focus-within:ring-indigo-600 flex-1">
                             <label for="chat-input"
                                    class="absolute -top-2 left-3 bg-gray-100 dark:bg-gray-700 px-1 text-xs font-medium text-gray-900 dark:text-gray-100">{{ user }}</label>
-                            <input id="chat-input" type="text" name="message" autocomplete="off"
-                                   class="block w-full border-0 p-2 placeholder:text-gray-100 focus:ring-0 sm:text-sm sm:leading-6 bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100 dark:border-gray-600 rounded-md focus:outline-none"
+                            <input id="chat-input" type="text" name="message"
+                                   class="block w-full border-0 p-0 placeholder:text-gray-100 focus:ring-0 sm:text-sm sm:leading-6 bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100 dark:border-gray-600 rounded-md focus:outline-none"
                                    placeholder="Type your message...">
                             <input type="hidden" id="group-id" name="group_id" value="{{ chat_groups.first.id }}">
                         </div>
                         <button type="submit"
-                                class="px-4 py-2 bg-indigo-500 text-white rounded-md hover:bg-indigo-400 focus:outline-none focus:ring-2 focus:ring-indigo-500">
+                                class="mt-2 px-4 py-2 bg-indigo-500 text-white rounded-md hover:bg-indigo-400 focus:outline-none focus:ring-2 focus:ring-indigo-500">
                             Send
                         </button>
                     </form>
                 </div>
-
-
             </div>
         </div>
     </div>
 {% endblock %}
 
 {% block custom_js %}
-    <script>
-        document.addEventListener('DOMContentLoaded', () => {
-            const chatForm = document.getElementById('chat-form');
-            const chatMessages = document.getElementById('chat-messages');
-            const chatContainer = document.getElementById('chat-container');
-            const chatGroups = document.getElementById('chat-groups').children;
-            const defaultGroupId = document.getElementById('group-id').value;
+<script>
+    document.addEventListener('DOMContentLoaded', () => {
+    const chatForm = document.getElementById('chat-form');
+    const chatMessages = document.getElementById('chat-messages');
+    const chatContainer = document.getElementById('chat-container');
+    const chatGroups = document.getElementById('chat-groups').children;
+    const defaultGroupId = document.getElementById('group-id').value;
 
-            let idleTimer;
-            const idleTimeout = 10000; // 30 seconds
+    const scrollToBottom = () => {
+        chatContainer.scrollTop = chatContainer.scrollHeight;
+    };
 
-            const scrollToBottom = () => {
-                chatContainer.scrollTop = chatContainer.scrollHeight;
-            };
+    const loadMessagesForGroup = (groupId) => {
+        fetch(`/chat/load_messages/${groupId}/`)
+            .then(response => response.json())
+            .then(data => {
+                chatMessages.innerHTML = data.messages_html;
+                scrollToBottom();
+            })
+            .catch(error => console.error('Error:', error));
+    };
 
-            const resetIdleTimer = () => {
-                clearTimeout(idleTimer);
-                idleTimer = setTimeout(() => {
-                    requestAIResponse();
-                }, idleTimeout);
-            };
+    const handleFormSubmit = (event) => {
+        event.preventDefault();
 
-            const loadMessagesForGroup = (groupId) => {
-                fetch(`/chat/load_messages/${groupId}/`)
-                    .then(response => response.json())
-                    .then(data => {
-                        chatMessages.innerHTML = data.messages_html;
-                        scrollToBottom();
-                        resetIdleTimer();
-                    })
-                    .catch(error => console.error('Error:', error));
-            };
+        const formData = new FormData(chatForm);
 
-            const requestAIResponse = () => {
-                const lastMessageId = chatMessages.lastElementChild ? chatMessages.lastElementChild.dataset.messageId : null;
-                if (lastMessageId) {
-                    fetch("{% url 'get_ai_response' %}", {
-                        method: 'POST',
-                        headers: {
-                            'Content-Type': 'application/json',
-                            'X-CSRFToken': document.querySelector('[name=csrfmiddlewaretoken]').value
-                        },
-                        body: JSON.stringify({message_id: lastMessageId})
-                    })
-                        .then(response => response.json())
-                        .then(data => {
-                            chatMessages.insertAdjacentHTML('beforeend', data.serin_reply_html);
-                            scrollToBottom();
-                            resetIdleTimer();
-                        })
-                        .catch(error => console.error('Error:', error));
-                }
-            };
+        fetch("{% url 'send_message' %}", {
+            method: 'POST',
+            headers: {
+                'X-CSRFToken': formData.get('csrfmiddlewaretoken')
+            },
+            body: formData
+        })
+            .then(response => response.json())
+            .then(data => {
+                chatMessages.insertAdjacentHTML('beforeend', data.user_message_html);
+                scrollToBottom();
 
-            const handleFormSubmit = (event) => {
-                event.preventDefault();
+                chatForm.reset();
 
-                const formData = new FormData(chatForm);
-
-                fetch("{% url 'send_message' %}", {
+                return fetch("{% url 'get_ai_response' %}", {
                     method: 'POST',
                     headers: {
+                        'Content-Type': 'application/json',
                         'X-CSRFToken': formData.get('csrfmiddlewaretoken')
                     },
-                    body: formData
-                })
-                    .then(response => response.json())
-                    .then(data => {
-                        chatMessages.insertAdjacentHTML('beforeend', data.user_message_html);
-                        scrollToBottom();
-
-                        chatForm.reset();
-
-                        return fetch("{% url 'get_ai_response' %}", {
-                            method: 'POST',
-                            headers: {
-                                'Content-Type': 'application/json',
-                                'X-CSRFToken': formData.get('csrfmiddlewaretoken')
-                            },
-                            body: JSON.stringify({message_id: data.message_id})
-                        });
-                    })
-                    .then(response => response.json())
-                    .then(data => {
-                        chatMessages.insertAdjacentHTML('beforeend', data.serin_reply_html);
-                        scrollToBottom();
-                        resetIdleTimer();
-                    })
-                    .catch(error => console.error('Error:', error));
-            };
-
-            const handleGroupClick = (event) => {
-                const activeGroup = event.currentTarget;
-                const groupId = activeGroup.dataset.groupId;
-
-                // Remove active class from all groups
-                Array.from(chatGroups).forEach(group => group.classList.remove('active'));
-
-                // Add active class to the clicked group
-                activeGroup.classList.add('active');
-
-                // Update the hidden group_id input
-                document.getElementById('group-id').value = groupId;
-
-                // Load messages for the selected group
-                loadMessagesForGroup(groupId);
-            };
-
-            Array.from(chatGroups).forEach(group => {
-                group.addEventListener('click', handleGroupClick);
-            });
-
-            chatForm.addEventListener('submit', handleFormSubmit);
-
-            new MutationObserver(() => {
+                    body: JSON.stringify({message_id: data.message_id})
+                });
+            })
+            .then(response => response.json())
+            .then(data => {
+                chatMessages.insertAdjacentHTML('beforeend', data.serin_reply_html);
                 scrollToBottom();
-                resetIdleTimer();
-            }).observe(chatMessages, {childList: true});
+            })
+            .catch(error => console.error('Error:', error));
+    };
 
-            // Load messages for the default or last active group on page load
-            if (defaultGroupId) {
-                loadMessagesForGroup(defaultGroupId);
-            }
+    const handleGroupClick = (event) => {
+        const activeGroup = event.currentTarget;
+        const groupId = activeGroup.dataset.groupId;
 
-            scrollToBottom();
-            resetIdleTimer();
-        });
+        // Remove active class from all groups
+        Array.from(chatGroups).forEach(group => group.classList.remove('active'));
 
-    </script>
+        // Add active class to the clicked group
+        activeGroup.classList.add('active');
+
+        // Update the hidden group_id input
+        document.getElementById('group-id').value = groupId;
+
+        // Load messages for the selected group
+        loadMessagesForGroup(groupId);
+    };
+
+    Array.from(chatGroups).forEach(group => {
+        group.addEventListener('click', handleGroupClick);
+    });
+
+    chatForm.addEventListener('submit', handleFormSubmit);
+
+    new MutationObserver(scrollToBottom).observe(chatMessages, {childList: true});
+
+    // Load messages for the default or last active group on page load
+    if (defaultGroupId) {
+        loadMessagesForGroup(defaultGroupId);
+    }
+
+    scrollToBottom();
+});
+
+</script>
 {% endblock %}
