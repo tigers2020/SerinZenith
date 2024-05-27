@@ -86,6 +86,7 @@ class GetAIResponseView(View):
         completion_request = self.prepare_completion_request(text_generation_settings, message_history)
         serin_reply = self.get_ai_response(completion_request)
 
+        serin_reply = serin_reply.replace('\n', '<br>')
         chat_message = get_object_or_404(ChatMessage, id=message_id)
         chat_group = chat_message.group
         ChatMessage.objects.create(user=user, group=chat_group, sender='assistant', message=serin_reply)
