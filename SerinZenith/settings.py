@@ -40,11 +40,15 @@ INSTALLED_APPS = [
     'django.contrib.sessions',
     'django.contrib.messages',
     'django.contrib.staticfiles',
-    'tailwind',
-    'theme',
+
+    # pip libraries
     'tinymce',
+    'tailwind',
     'rest_framework',
     'django_browser_reload',
+
+    # apps
+    'theme',
     'main',  # Main Page Displayer
     'chat',  # Manage Chat Group and Message
     'serin_zenith_settings',  # everything about AI settings

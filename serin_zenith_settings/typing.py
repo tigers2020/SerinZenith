@@ -182,16 +182,16 @@ class LogitsResponse(BaseModel):
 
 
 class ModelInfoResponse(BaseModel):
-    model_name: str
+    info_model_name: str
     lora_names: List[str]
 
 
 class ModelListResponse(BaseModel):
-    model_names: List[str]
+    list_model_names: List[str]
 
 
 class LoadModelRequest(BaseModel):
-    model_name: str
+    load_model_name: str
     args: dict | None = None
     settings: dict | None = None
 
