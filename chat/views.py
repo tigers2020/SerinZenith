@@ -1,5 +1,3 @@
-import json
-
 import requests
 from django.conf import settings
 from django.contrib.auth.mixins import LoginRequiredMixin
@@ -12,6 +10,8 @@ from django.views import View
 from django.views.generic import TemplateView
 
 from SerinZenith import settings
+from serin_zenith_settings.models import TextGeneration
+from serin_zenith_settings.typing import ChatCompletionRequest, ChatCompletionResponse
 from .models import ChatMessage, ChatGroup
 
 
@@ -25,11 +25,9 @@ class ChatView(LoginRequiredMixin, TemplateView):
         current_time = timezone.now()
         group_name = current_time.strftime('%Y-%m-%d %I:00 %p')
         chat_group, created = ChatGroup.objects.get_or_create(name=group_name)
-        print(chat_group.id)
         chat_groups = ChatGroup.objects.all().order_by('-name')
         chat_message = ChatMessage.objects.filter(group=chat_group).order_by('created_at')
 
-        print(chat_message)
         context['chat_groups'] = chat_groups
         context['chat_messages'] = chat_message
 
@@ -52,8 +50,9 @@ class SendMessageView(View):
         chat_group = get_object_or_404(ChatGroup, id=chat_group_id)
         chat_message = ChatMessage.objects.create(user=request.user, group=chat_group, sender='user',
                                                   message=message_content)
+
         message = {
-            'sender': request.sender,
+            'sender': request.user,
             'message': message_content
         }
         message_html = render_to_string('chat/user_message.html', {'message': message}, request=request)
@@ -65,12 +64,6 @@ class SendMessageView(View):
 
 
 class GetAIResponseView(View):
-    """
-    View class that handles the logic for generating AI responses in a chat application.
-
-    :param View: Django View class to handle HTTP requests
-    """
-
     def __init__(self):
         super().__init__()
         self.response = None
@@ -83,7 +76,15 @@ class GetAIResponseView(View):
 
         messages = self.get_recent_messages()
         message_history = self.prepare_message_history(messages)
-        serin_reply = self.get_ai_response(message_history)
+        # Fetch the appropriate TextGeneration settings
+        preset = request.POST.get('preset', 'Yara')
+        try:
+            text_generation_settings = TextGeneration.objects.get(preset=preset)
+        except TextGeneration.DoesNotExist:
+            return JsonResponse({"error": f"Preset {preset} does not exist."}, status=400)
+        # Prepare completion request using Pydantic schema
+        completion_request = self.prepare_completion_request(text_generation_settings, message_history)
+        serin_reply = self.get_ai_response(completion_request)
 
         chat_message = get_object_or_404(ChatMessage, id=message_id)
         chat_group = chat_message.group
@@ -123,24 +124,54 @@ class GetAIResponseView(View):
         }
         return error_messages.get(status_code, f"An HTTP error occurred: {http_err}. Please try again later.")
 
-    def get_ai_response(self, message_history):
+    def prepare_completion_request(self, text_generation_settings, message_history):
+        # Map the TextGeneration settings to the ChatCompletionRequest schema
+        completion_request = ChatCompletionRequest(
+            messages=message_history,
+            mode="chat",
+            character="serin",
+            top_a=text_generation_settings.sampling_parameters.top_a,
+            temperature=text_generation_settings.generation_settings.temperature,
+            max_tokens=text_generation_settings.generation_settings.max_new_tokens,
+            max_tokens_second=text_generation_settings.generation_settings.max_tokens_second,
+            skip_special_tokens=text_generation_settings.generation_settings.skip_special_tokens,
+            repetition_penalty=text_generation_settings.penalties_and_filters.repetition_penalty,
+            repetition_penalty_range=text_generation_settings.penalties_and_filters.repetition_penalty_range,
+            penalty_alpha=text_generation_settings.penalties_and_filters.penalty_alpha,
+            encoder_repetition_penalty=text_generation_settings.penalties_and_filters.encoder_repetition_penalty,
+            no_repeat_ngram_size=text_generation_settings.penalties_and_filters.no_repeat_ngram_size,
+            dynatemp_low=text_generation_settings.dynamic_adjustments.dynatemp_low,
+            dynatemp_high=text_generation_settings.dynamic_adjustments.dynatemp_high,
+            dynatemp_exponent=text_generation_settings.dynamic_adjustments.dynatemp_exponent,
+            mirostat_mode=text_generation_settings.dynamic_adjustments.mirostat_mode,
+            mirostat_tau=text_generation_settings.dynamic_adjustments.mirostat_tau,
+            mirostat_eta=text_generation_settings.dynamic_adjustments.mirostat_eta,
+            guidance_scale=text_generation_settings.advanced_settings.guidance_scale,
+            negative_prompt=text_generation_settings.advanced_settings.negative_prompt,
+            epsilon_cutoff=text_generation_settings.advanced_settings.epsilon_cutoff,
+            eta_cutoff=text_generation_settings.advanced_settings.eta_cutoff,
+            truncation_length=text_generation_settings.contextual_settings.truncation_length,
+            prompt_lookup_num_tokens=text_generation_settings.contextual_settings.prompt_lookup_num_tokens,
+            add_bos_token=text_generation_settings.contextual_settings.add_bos_token,
+            ban_eos_token=text_generation_settings.contextual_settings.ban_eos_token,
+            grammar_string=text_generation_settings.contextual_settings.grammar_string
+        )
+        return completion_request
 
+    def get_ai_response(self, completion_request):
         api_url = settings.OPENAI_API_URL + "v1/chat/completions"
         headers = {
             'Accept': 'application/json',
             'Content-Type': 'application/json',
         }
-        data = {
-            "mode": "chat",
-            "character": "serin",
-            "messages": message_history,
-        }
+        data = completion_request.json()
 
         try:
-            self.response = requests.post(api_url, headers=headers, data=json.dumps(data), timeout=10)
+            self.response = requests.post(api_url, headers=headers, data=data, timeout=10)
             self.response.raise_for_status()  # Raise an HTTPError for bad responses (4xx and 5xx)
             response_data = self.response.json()
-            return response_data['choices'][0]['message']['content']
+            ai_response = ChatCompletionResponse(**response_data)
+            return ai_response.choices[0]['message']['content']
         except requests.exceptions.HTTPError as http_err:
             return GetAIResponseView.get_error_message_based_on_status_code(self.response.status_code, http_err)
         except requests.exceptions.ConnectionError:

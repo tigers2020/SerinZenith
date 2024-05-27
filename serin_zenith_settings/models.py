@@ -167,12 +167,12 @@ class ContextualSettings(models.Model):
 class TextGeneration(models.Model):
     preset = models.CharField(max_length=255, null=True, blank=True,
                               help_text="The name of a file under text-generation-webui/presets (without the .yaml extension). This file contains sampling parameters for generation.")
-    generation_settings = models.OneToOneField(GenerationSettings, on_delete=models.CASCADE)
-    sampling_parameters = models.OneToOneField(SamplingParameters, on_delete=models.CASCADE)
-    penalties_and_filters = models.OneToOneField(PenaltiesAndFilters, on_delete=models.CASCADE)
-    dynamic_adjustments = models.OneToOneField(DynamicAdjustments, on_delete=models.CASCADE)
-    advanced_settings = models.OneToOneField(AdvancedSettings, on_delete=models.CASCADE)
-    contextual_settings = models.OneToOneField(ContextualSettings, on_delete=models.CASCADE)
+    generation_settings = models.ForeignKey(GenerationSettings, on_delete=models.CASCADE)
+    sampling_parameters = models.ForeignKey(SamplingParameters, on_delete=models.CASCADE)
+    penalties_and_filters = models.ForeignKey(PenaltiesAndFilters, on_delete=models.CASCADE)
+    dynamic_adjustments = models.ForeignKey(DynamicAdjustments, on_delete=models.CASCADE)
+    advanced_settings = models.ForeignKey(AdvancedSettings, on_delete=models.CASCADE)
+    contextual_settings = models.ForeignKey(ContextualSettings, on_delete=models.CASCADE)
 
     def __str__(self):
         return (

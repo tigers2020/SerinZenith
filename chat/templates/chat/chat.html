@@ -54,85 +54,96 @@
 {% endblock %}
 
 {% block custom_js %}
-    <script>
-        document.addEventListener('DOMContentLoaded', () => {
-            const chatForm = document.getElementById('chat-form');
-            const chatMessages = document.getElementById('chat-messages');
-            const chatContainer = document.getElementById('chat-container');
-            const chatGroups = document.getElementById('chat-groups').children;
+<script>
+    document.addEventListener('DOMContentLoaded', () => {
+    const chatForm = document.getElementById('chat-form');
+    const chatMessages = document.getElementById('chat-messages');
+    const chatContainer = document.getElementById('chat-container');
+    const chatGroups = document.getElementById('chat-groups').children;
+    const defaultGroupId = document.getElementById('group-id').value;
 
-            const scrollToBottom = () => {
-                chatContainer.scrollTop = chatContainer.scrollHeight;
-            };
+    const scrollToBottom = () => {
+        chatContainer.scrollTop = chatContainer.scrollHeight;
+    };
 
-            const handleFormSubmit = (event) => {
-                event.preventDefault();
+    const loadMessagesForGroup = (groupId) => {
+        fetch(`/chat/load_messages/${groupId}/`)
+            .then(response => response.json())
+            .then(data => {
+                chatMessages.innerHTML = data.messages_html;
+                scrollToBottom();
+            })
+            .catch(error => console.error('Error:', error));
+    };
 
-                const formData = new FormData(chatForm);
+    const handleFormSubmit = (event) => {
+        event.preventDefault();
 
-                fetch("{% url 'send_message' %}", {
+        const formData = new FormData(chatForm);
+
+        fetch("{% url 'send_message' %}", {
+            method: 'POST',
+            headers: {
+                'X-CSRFToken': formData.get('csrfmiddlewaretoken')
+            },
+            body: formData
+        })
+            .then(response => response.json())
+            .then(data => {
+                chatMessages.insertAdjacentHTML('beforeend', data.user_message_html);
+                scrollToBottom();
+
+                chatForm.reset();
+
+                return fetch("{% url 'get_ai_response' %}", {
                     method: 'POST',
                     headers: {
+                        'Content-Type': 'application/json',
                         'X-CSRFToken': formData.get('csrfmiddlewaretoken')
                     },
-                    body: formData
-                })
-                    .then(response => response.json())
-                    .then(data => {
-                        chatMessages.insertAdjacentHTML('beforeend', data.user_message_html);
-                        scrollToBottom();
+                    body: JSON.stringify({message_id: data.message_id})
+                });
+            })
+            .then(response => response.json())
+            .then(data => {
+                chatMessages.insertAdjacentHTML('beforeend', data.serin_reply_html);
+                scrollToBottom();
+            })
+            .catch(error => console.error('Error:', error));
+    };
 
-                        chatForm.reset();
+    const handleGroupClick = (event) => {
+        const activeGroup = event.currentTarget;
+        const groupId = activeGroup.dataset.groupId;
 
-                        return fetch("{% url 'get_ai_response' %}", {
-                            method: 'POST',
-                            headers: {
-                                'Content-Type': 'application/json',
-                                'X-CSRFToken': formData.get('csrfmiddlewaretoken')
-                            },
-                            body: JSON.stringify({message_id: data.message_id})
-                        });
-                    })
-                    .then(response => response.json())
-                    .then(data => {
-                        chatMessages.insertAdjacentHTML('beforeend', data.serin_reply_html);
-                        scrollToBottom();
-                    })
-                    .catch(error => console.error('Error:', error));
-            };
+        // Remove active class from all groups
+        Array.from(chatGroups).forEach(group => group.classList.remove('active'));
 
-            const handleGroupClick = (event) => {
-                const activeGroup = event.currentTarget;
-                const groupId = activeGroup.dataset.groupId;
+        // Add active class to the clicked group
+        activeGroup.classList.add('active');
 
-                // Remove active class from all groups
-                Array.from(chatGroups).forEach(group => group.classList.remove('active'));
+        // Update the hidden group_id input
+        document.getElementById('group-id').value = groupId;
 
-                // Add active class to the clicked group
-                activeGroup.classList.add('active');
+        // Load messages for the selected group
+        loadMessagesForGroup(groupId);
+    };
 
-                // Update the hidden group_id input
-                document.getElementById('group-id').value = groupId;
+    Array.from(chatGroups).forEach(group => {
+        group.addEventListener('click', handleGroupClick);
+    });
 
-                // Load messages for the selected group
-                fetch(`/chat/load_messages/${groupId}/`)
-                    .then(response => response.json())
-                    .then(data => {
-                        chatMessages.innerHTML = data.messages_html;
-                        scrollToBottom();
-                    })
-                    .catch(error => console.error('Error:', error));
-            };
+    chatForm.addEventListener('submit', handleFormSubmit);
 
-            Array.from(chatGroups).forEach(group => {
-                group.addEventListener('click', handleGroupClick);
-            });
+    new MutationObserver(scrollToBottom).observe(chatMessages, {childList: true});
 
-            chatForm.addEventListener('submit', handleFormSubmit);
+    // Load messages for the default or last active group on page load
+    if (defaultGroupId) {
+        loadMessagesForGroup(defaultGroupId);
+    }
 
-            new MutationObserver(scrollToBottom).observe(chatMessages, {childList: true});
+    scrollToBottom();
+});
 
-            scrollToBottom();
-        });
-    </script>
+</script>
 {% endblock %}
